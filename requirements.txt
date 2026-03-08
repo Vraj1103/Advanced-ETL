@@ -1,0 +1,27 @@
+# Web Framework
+fastapi==0.111.0
+uvicorn==0.29.0
+python-multipart==0.0.9
+
+# Azure Services
+azure-ai-formrecognizer==3.3.2
+azure-search-documents==11.6.0b1
+azure-core==1.30.0
+
+# OpenAI
+openai==2.3.0
+
+# Text Processing
+tiktoken==0.7.0
+
+# Utilities
+python-dotenv==1.0.0
+backoff==2.2.1
+
+# PostgreSQL (Structured Storage)
+asyncpg==0.30.0
+
+# Optional for enhanced functionality
+pydantic==2.8.2
+aiohttp==3.11.10
+langgraph==0.2.61
