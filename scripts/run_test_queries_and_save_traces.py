@@ -13,6 +13,7 @@ Output:
   execution_logs/test1_verification.json
   execution_logs/test2_data_synthesis.json
   execution_logs/test3_forecasting.json
+  execution_logs/test4_benchmarking.json
 """
 
 import argparse
@@ -44,6 +45,11 @@ TEST_QUERIES = [
         "id": "test3_forecasting",
         "query": "Based on our 2022 baseline and the stated 2030 job target, what is the required compound annual growth rate (CAGR) to hit that goal?",
         "description": "Forecasting: baseline + target, CAGR via tool",
+    },
+    {
+        "id": "test4_benchmarking",
+        "query": "In the report's benchmarking section, how do Ireland, Northern Ireland, and the UK compare in terms of number of cyber security employees and sector GVA? Give the exact figures for each region and cite the table and page.",
+        "description": "Complex: multi-region comparison, two metrics, exact numbers + citation",
     },
 ]
 
