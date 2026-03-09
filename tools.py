@@ -336,8 +336,8 @@ async def get_table_info(table_id: str) -> Dict[str, Any]:
 # ============================================================================
 
 async def calculate_metrics(
-    data: List[Dict],
     metric_type: str,
+    data: Optional[List[Dict]] = None,
     column: Optional[str] = None,
     start_value: Optional[float] = None,
     end_value: Optional[float] = None,
@@ -345,18 +345,20 @@ async def calculate_metrics(
 ) -> Dict[str, Any]:
     """
     Calculate metrics on data (sum, count, avg, CAGR, growth rate).
-    
+
     This tool performs aggregations and compound annual growth rate calculations
     for forecasting and trend analysis scenarios.
-    
+
+    For CAGR: pass metric_type="cagr", start_value, end_value, and years. data can be omitted.
+
     Args:
-        data: List of row dictionaries to calculate on
         metric_type: Type of metric - "count", "sum", "avg", "min", "max", "cagr"
-        column: Column name to calculate on (required for sum/avg/min/max/cagr)
+        data: List of row dictionaries to calculate on (optional for CAGR)
+        column: Column name to calculate on (required for sum/avg/min/max)
         start_value: Starting value for CAGR calculation
         end_value: Ending value for CAGR calculation
-        years: Number of years for CAGR calculation (e.g., 5 for 5-year CAGR)
-        
+        years: Number of years for CAGR calculation (e.g., 8 for 2022 to 2030)
+
     Returns:
         Dictionary with:
         - status: "success" or "error"
@@ -364,20 +366,19 @@ async def calculate_metrics(
         - result: The calculated value
         - data_points: Number of data points used
         - error: Error message if status is "error"
-        
+
     Example:
-        >>> # Calculate 5-year CAGR
+        >>> # Calculate CAGR from 2022 to 2030 (e.g. jobs 7351 -> 17333)
         >>> result = await calculate_metrics(
-        ...     data=salary_data,
         ...     metric_type="cagr",
-        ...     column="average_salary",
-        ...     start_value=50000,
-        ...     end_value=75000,
-        ...     years=5
+        ...     start_value=7351,
+        ...     end_value=17333,
+        ...     years=8
         ... )
         >>> print(f"CAGR: {result['result']:.2%}")
     """
-    if not data:
+    data = data if data is not None else []
+    if not data and metric_type != "cagr":
         return {
             "status": "error",
             "error": "No data provided",
@@ -434,7 +435,7 @@ async def calculate_metrics(
             "status": "success",
             "metric_type": metric_type,
             "result": result,
-            "data_points": len(data),
+            "data_points": len(data) if data else 0,
             "column": column if column else None
         }
     
@@ -751,7 +752,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "semantic_search",
-                "description": "Search for relevant content chunks using semantic similarity. Find content by meaning, not keywords.",
+                "description": "Search document chunks by meaning. Use to find where a number or concept is stated, narrative context, and tables with baseline/target or growth figures. Then use query_table or calculate_metrics as needed.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -781,7 +782,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "query_table",
-                "description": "Query a specific table with optional column filters. Execute SQL-like queries on structured data.",
+                "description": "Get rows from a table by table_id (from discover_tables). Use for regional breakdowns, employment figures, growth data. Optional column_filters and limit.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -807,7 +808,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "discover_tables",
-                "description": "Discover available tables by namespace or keywords. Find what data tables exist.",
+                "description": "List tables in the document. Returns table_id, columns, row_count, page_number. For regional or segment comparisons, find the table whose columns match what is being compared (e.g. region/location and count or share); then call query_table with that table_id. Optional keywords to filter when many tables exist.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -845,38 +846,38 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "calculate_metrics",
-                "description": "Calculate metrics on data: count, sum, average, min, max, or CAGR. Used for trend analysis and forecasting.",
+                "description": "Calculate metrics: count, sum, avg, min, max, or CAGR. For CAGR use metric_type='cagr' with start_value, end_value, and years only (data is not required for CAGR).",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "data": {
-                            "type": "array",
-                            "items": {"type": "object"},
-                            "description": "List of row dictionaries to calculate on"
-                        },
                         "metric_type": {
                             "type": "string",
                             "enum": ["count", "sum", "avg", "min", "max", "cagr"],
                             "description": "Type of metric to calculate"
                         },
+                        "data": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "List of row dictionaries (optional for CAGR)"
+                        },
                         "column": {
                             "type": "string",
-                            "description": "Column name to calculate on (required for sum/avg/min/max/cagr)"
+                            "description": "Column name for sum/avg/min/max"
                         },
                         "start_value": {
                             "type": "number",
-                            "description": "Starting value for CAGR calculation"
+                            "description": "Starting value for CAGR (e.g. 2022 baseline jobs)"
                         },
                         "end_value": {
                             "type": "number",
-                            "description": "Ending value for CAGR calculation"
+                            "description": "Ending value for CAGR (e.g. 2030 target jobs)"
                         },
                         "years": {
                             "type": "integer",
-                            "description": "Number of years for CAGR calculation"
+                            "description": "Number of years for CAGR (e.g. 8 for 2022 to 2030)"
                         }
                     },
-                    "required": ["data", "metric_type"]
+                    "required": ["metric_type"]
                 }
             }
         },
@@ -912,7 +913,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "compare_data",
-                "description": "Compare two datasets: calculate differences, ratios, percentage changes, or correlations. Supports regional/temporal comparisons.",
+                "description": "Compare two datasets (differences, ratios, percentage change). You must pass dataset_1 and dataset_2 as arrays of rows—e.g. from query_table. Get table data first with query_table, then call compare_data with those rows. Required: dataset_1, dataset_2, comparison_type.",
                 "parameters": {
                     "type": "object",
                     "properties": {

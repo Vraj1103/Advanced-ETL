@@ -7,7 +7,7 @@
 
 **Agent**
 - **LangGraph** is used for orchestration because it gives an explicit graph (LLM to tools to LLM) with state and step limits, making tool routing and traceability straightforward. The model chooses tools and we record every call and result when `debug: true`.
-- **Tools** are split by capability: semantic search (vector), lookup_fact / query_table / discover_tables (PostgreSQL), calculate_metrics (CAGR and other math), compare_data (regional/temporal comparison), get_source_citation (page and quote). The system prompt instructs the model to use structured tools for numbers and comparisons and to avoid mental math.
+- **Tools** are split by capability: semantic search (vector), query_table / discover_tables (PostgreSQL), calculate_metrics (CAGR and other math), compare_data (regional/temporal comparison), get_source_citation (page and quote). The system prompt instructs the model to use structured tools for numbers and comparisons and to avoid mental math.
 
 **Toolset**
 - **Vector vs PostgreSQL**: Vector search is good for "where is this discussed?" and narrative context; PostgreSQL is used for "what is the exact value?" and table filters. Keeping them separate avoids over-relying on the model to parse unstructured chunks for numeric answers.
