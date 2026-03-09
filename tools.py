@@ -812,7 +812,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "discover_tables",
-                "description": "List tables in the document. Returns table_id, columns, row_count, page_number. Keywords (if provided) are matched only against table_id and column names—not row values. For regional or segment comparison: omit keywords or use terms that appear in column headers (e.g. region, offices, dedicated); do not use specific region names (e.g. South-West) as keywords. Then pick the table whose columns include region/location and count or share, and call query_table with that table_id.",
+                "description": "List tables in the document. Returns table_id, columns, row_count, page_number. Keywords (if provided) are matched only against table_id and column names—not row values. For regional or segment comparison: omit keywords or use terms that appear in column headers (e.g. region, offices, dedicated). For 'concentration' of a category (e.g. Pure-Play): pick the table that has REGION and both the category column (e.g. dedicated offices) and total column (e.g. total offices); then query_table and compute share = category/total for region and national rows. Then call query_table with that table_id.",
                 "parameters": {
                     "type": "object",
                     "properties": {
