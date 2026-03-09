@@ -250,13 +250,17 @@ async def discover_tables(
                 if any(kw in table_text for kw in keywords_lower):
                     filtered_tables.append(table)
             formatted_tables = filtered_tables
+            keyword_note = "Keywords matched table_id and column names only (not row values). For regional or segment comparison, if the table you need is missing, call discover_tables again without keywords or with terms like 'region', 'offices', 'dedicated'."
+        else:
+            keyword_note = None
         
         return {
             "status": "success",
             "tables": formatted_tables,
             "table_count": len(formatted_tables),
             "namespace": namespace,
-            "keywords_filter": keywords
+            "keywords_filter": keywords,
+            "note": keyword_note
         }
     except Exception as e:
         return {
@@ -808,7 +812,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "discover_tables",
-                "description": "List tables in the document. Returns table_id, columns, row_count, page_number. For regional or segment comparisons, find the table whose columns match what is being compared (e.g. region/location and count or share); then call query_table with that table_id. Optional keywords to filter when many tables exist.",
+                "description": "List tables in the document. Returns table_id, columns, row_count, page_number. Keywords (if provided) are matched only against table_id and column names—not row values. For regional or segment comparison: omit keywords or use terms that appear in column headers (e.g. region, offices, dedicated); do not use specific region names (e.g. South-West) as keywords. Then pick the table whose columns include region/location and count or share, and call query_table with that table_id.",
                 "parameters": {
                     "type": "object",
                     "properties": {
