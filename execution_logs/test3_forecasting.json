@@ -1,0 +1,24 @@
+{
+  "test_id": "test3_forecasting",
+  "description": "Forecasting: baseline + target, CAGR via tool",
+  "query": "Based on our 2022 baseline and the stated 2030 job target, what is the required compound annual growth rate (CAGR) to hit that goal?",
+  "namespace": "new_two",
+  "run_at": "2026-03-09T16:54:31.670239Z",
+  "response": {
+    "status": "success",
+    "query": "Based on our 2022 baseline and the stated 2030 job target, what is the required compound annual growth rate (CAGR) to hit that goal?",
+    "namespace": "new_two",
+    "steps": 0,
+    "answer": "To calculate the required compound annual growth rate (CAGR) from the 2022 baseline to the 2030 job target, I need the following information:\n\n1. The number of jobs in 2022 (baseline).\n2. The target number of jobs in 2030.\n\nPlease provide these values, or I can look them up if you have a specific document or source in mind.",
+    "trace": {
+      "events": [
+        {
+          "type": "assistant_message",
+          "content": "To calculate the required compound annual growth rate (CAGR) from the 2022 baseline to the 2030 job target, I need the following information:\n\n1. The number of jobs in 2022 (baseline).\n2. The target number of jobs in 2030.\n\nPlease provide these values, or I can look them up if you have a specific document or source in mind."
+        }
+      ],
+      "tool_calls": [],
+      "tool_results": []
+    }
+  }
+}
