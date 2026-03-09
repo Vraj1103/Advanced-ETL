@@ -67,6 +67,16 @@ class PDFExtractionService:
         """Extract and organize paragraphs and tables from AFR output"""
         paragraphs = extracted_data.get('paragraphs', [])
         tables = extracted_data.get('tables', [])
+        # Fallback: some SDK/API shapes put paragraphs and tables inside documents[]
+        if not paragraphs or not tables:
+            for doc in extracted_data.get('documents', []):
+                if isinstance(doc, dict):
+                    if not paragraphs:
+                        paragraphs = doc.get('paragraphs', [])
+                    if not tables:
+                        tables = doc.get('tables', [])
+                if paragraphs and tables:
+                    break
         page_numbers = set()
         
         for para in paragraphs:

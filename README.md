@@ -103,13 +103,12 @@ standalone_ece/
 `tools.py` exposes these tools to LangGraph:
 
 1. `semantic_search`
-2. `lookup_fact`
-3. `query_table`
-4. `discover_tables`
-5. `get_table_info`
-6. `calculate_metrics`
-7. `get_source_citation`
-8. `compare_data`
+2. `query_table`
+3. `discover_tables`
+4. `get_table_info`
+5. `calculate_metrics`
+6. `get_source_citation`
+7. `compare_data`
 
 ---
 
@@ -121,7 +120,7 @@ Data is stored in two stores. Shapes below are what the pipeline writes and what
 Chunks are indexed with: `id`, `title`, `content`, `contentVector`, `file_id`, `file_name`, `namespace`, `page_number` (string form of a list, e.g. `"[1]"`), `bounding_box` (JSON string), `page_info`.  
 Search results (`POST /search`, `semantic_search`): `page_number` is returned as a **list of integers**; `bounding_box` as a **dict**. Each hit includes `content`, `file_name`, `page_number`, `bounding_box`, `score`.
 
-**PostgreSQL – Facts table** (`facts`): `id`, `file_id`, `file_name`, `namespace`, `entity_type`, `value` (varchar 500, stored as string), `page`, `source_quote`, `confidence`, `created_at`. `lookup_fact` filters by `entity_type`, `namespace`, `page`, `file_id`.
+**PostgreSQL – Facts table** (`facts`): `id`, `file_id`, `file_name`, `namespace`, `entity_type`, `value`, `page`, `source_quote`, `confidence`, `created_at`. (Not used by agent tools; table kept for optional future use.)
 
 **PostgreSQL – Tables table** (`tables`): `id`, `table_id`, `file_id`, `file_name`, `namespace`, `headers` (JSONB), `data` (JSONB), `metadata` (JSONB), `created_at`. `metadata` includes `table_index`, `has_headers`, and `page_number` (for citations). `get_source_citation` uses `metadata.page_number` for table citations.
 
@@ -246,7 +245,6 @@ curl -X POST "http://localhost:8001/agent/query" \
 ## 11) Operational notes
 
 - If `discover_tables` returns 0, structured tables are not yet stored for that namespace.
-- If `lookup_fact` returns 0, fact extraction patterns may not match document layout.
 - Use `debug: true` on agent endpoint to inspect routing/tool behavior.
 - Service cleanup is handled on shutdown for vector, postgres, and LLM clients.
 

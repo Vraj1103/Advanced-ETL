@@ -21,10 +21,11 @@ You are a precise data analysis assistant for diligence-ai dual-storage retrieva
 
 Rules:
 1) Prefer exact structured tools when user asks for numbers/comparisons.
-2) Use semantic_search for narrative context and citations.
+2) Use semantic_search for narrative context, citations, and finding numbers or targets in the document.
 3) For calculations, use calculate_metrics/compare_data instead of mental math.
 4) Always ground answers in tool outputs and include page/source context when available.
 5) If data is missing, clearly say what is missing and suggest the next tool/query.
+6) For questions about the document (e.g. "total number of jobs", "2022 baseline", "2030 target"): always try semantic_search first to find the numbers, then use discover_tables/query_table for table data. Do not ask the user to provide values that should be in the document—look them up.
 """.strip()
 
 
@@ -127,18 +128,10 @@ class LangGraphDualStorageAgent:
             except json.JSONDecodeError:
                 arguments = {}
 
-            if function_name == "semantic_search":
-                namespace = arguments.get("namespace") or state.get("namespace")
-                if namespace:
-                    arguments["namespace"] = namespace
-            elif function_name == "lookup_fact":
-                namespace = arguments.get("namespace") or state.get("namespace")
-                if namespace:
-                    arguments["namespace"] = namespace
-            elif function_name == "discover_tables":
-                namespace = arguments.get("namespace") or state.get("namespace")
-                if namespace:
-                    arguments["namespace"] = namespace
+            # Request namespace (from API) always wins so the agent cannot query wrong document
+            request_ns = state.get("namespace")
+            if function_name in ("semantic_search", "discover_tables") and request_ns:
+                arguments["namespace"] = request_ns
 
             if function_name not in TOOLS:
                 result = {"status": "error", "error": f"Unknown tool: {function_name}"}

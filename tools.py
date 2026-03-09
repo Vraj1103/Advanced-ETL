@@ -104,92 +104,7 @@ async def semantic_search(
 
 
 # ============================================================================
-# TOOL 2: LOOKUP_FACT
-# ============================================================================
-
-async def lookup_fact(
-    entity_type: Optional[str] = None,
-    page_number: Optional[int] = None,
-    file_id: Optional[str] = None,
-    namespace: Optional[str] = None,
-    limit: int = 50
-) -> Dict[str, Any]:
-    """
-    Look up pre-extracted facts from the structured storage.
-    
-    This tool retrieves numeric facts (job counts, percentages, growth rates)
-    that have been extracted from the source documents with confidence scores.
-    
-    Args:
-        entity_type: Filter by fact type (e.g., "JOB_COUNT", "PERCENTAGE", "GROWTH_RATE")
-        page_number: Filter by page number
-        file_id: Filter by source file ID
-        namespace: Filter by namespace (recommended; injected by agent if not provided)
-        limit: Maximum number of facts to return (default: 50)
-        
-    Returns:
-        Dictionary with:
-        - status: "success" or "error"
-        - facts: List of fact objects with value, entity_type, page, source_quote, confidence
-        - fact_count: Number of facts returned
-        - error: Error message if status is "error"
-        
-    Example:
-        >>> facts = await lookup_fact(entity_type="JOB_COUNT", page_number=10)
-        >>> for fact in facts['facts']:
-        ...     print(f"{fact['value']} ({fact['confidence']}): {fact['source_quote']}")
-    """
-    if storage_service is None:
-        await initialize_services()
-    
-    try:
-        # Build filter dict for get_fact method
-        filters = {}
-        if page_number is not None:
-            filters['page'] = page_number
-        if file_id is not None:
-            filters['file_id'] = file_id
-
-        facts = await storage_service.get_fact(
-            entity_type=entity_type,
-            filters=filters if filters else None,
-            namespace=namespace,
-            limit=limit
-        )
-        
-        # Format results
-        formatted_facts = []
-        for fact in facts:
-            formatted_facts.append({
-                "value": fact.get("value"),
-                "entity_type": fact.get("entity_type"),
-                "page": fact.get("page"),
-                "source_quote": fact.get("source_quote"),
-                "confidence": fact.get("confidence", 0.0)
-            })
-        
-        return {
-            "status": "success",
-            "facts": formatted_facts,
-            "fact_count": len(formatted_facts),
-            "filters": {
-                "entity_type": entity_type,
-                "page_number": page_number,
-                "file_id": file_id,
-                "namespace": namespace
-            }
-        }
-    except Exception as e:
-        return {
-            "status": "error", 
-            "error": str(e),
-            "facts": [],
-            "fact_count": 0
-        }
-
-
-# ============================================================================
-# TOOL 3: QUERY_TABLE
+# TOOL 2: QUERY_TABLE
 # ============================================================================
 
 async def query_table(
@@ -269,7 +184,7 @@ async def query_table(
 
 
 # ============================================================================
-# TOOL 4: DISCOVER_TABLES
+# TOOL 3: DISCOVER_TABLES
 # ============================================================================
 
 async def discover_tables(
@@ -353,7 +268,7 @@ async def discover_tables(
 
 
 # ============================================================================
-# TOOL 5: GET_TABLE_INFO (Convenience Tool)
+# TOOL 4: GET_TABLE_INFO (Convenience Tool)
 # ============================================================================
 
 async def get_table_info(table_id: str) -> Dict[str, Any]:
@@ -417,7 +332,7 @@ async def get_table_info(table_id: str) -> Dict[str, Any]:
 
 
 # ============================================================================
-# TOOL 6: CALCULATE_METRICS
+# TOOL 5: CALCULATE_METRICS
 # ============================================================================
 
 async def calculate_metrics(
@@ -533,7 +448,7 @@ async def calculate_metrics(
 
 
 # ============================================================================
-# TOOL 7: GET_SOURCE_CITATION
+# TOOL 6: GET_SOURCE_CITATION
 # ============================================================================
 
 async def get_source_citation(
@@ -633,7 +548,7 @@ async def get_source_citation(
 
 
 # ============================================================================
-# TOOL 8: COMPARE_DATA
+# TOOL 7: COMPARE_DATA
 # ============================================================================
 
 async def compare_data(
@@ -815,7 +730,6 @@ async def compare_data(
 
 TOOLS = {
     "semantic_search": semantic_search,
-    "lookup_fact": lookup_fact,
     "query_table": query_table,
     "discover_tables": discover_tables,
     "get_table_info": get_table_info,
@@ -860,39 +774,6 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
                         }
                     },
                     "required": ["query"]
-                }
-            }
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "lookup_fact",
-                "description": "Look up pre-extracted numeric facts with confidence scores. Find job numbers, percentages, growth rates.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "entity_type": {
-                            "type": "string",
-                            "description": "Filter by fact type (e.g., JOB_COUNT, PERCENTAGE, GROWTH_RATE)"
-                        },
-                        "page_number": {
-                            "type": "integer",
-                            "description": "Filter by specific page number"
-                        },
-                        "file_id": {
-                            "type": "string",
-                            "description": "Filter by source file ID"
-                        },
-                        "namespace": {
-                            "type": "string",
-                            "description": "Filter by namespace (e.g., document name) to avoid cross-document results"
-                        },
-                        "limit": {
-                            "type": "integer",
-                            "description": "Maximum number of facts to return (default: 50)",
-                            "default": 50
-                        }
-                    }
                 }
             }
         },
