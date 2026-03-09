@@ -14,7 +14,7 @@ class TableExtractor:
         file_name: str
     ) -> List[Dict]:
         """
-        Convert AFR table output to structured format for MongoDB
+        Convert AFR table output to structured format for PostgreSQL
         
         Args:
             extracted_data: Output from AFR extraction service

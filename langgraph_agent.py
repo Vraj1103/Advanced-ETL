@@ -131,6 +131,14 @@ class LangGraphDualStorageAgent:
                 namespace = arguments.get("namespace") or state.get("namespace")
                 if namespace:
                     arguments["namespace"] = namespace
+            elif function_name == "lookup_fact":
+                namespace = arguments.get("namespace") or state.get("namespace")
+                if namespace:
+                    arguments["namespace"] = namespace
+            elif function_name == "discover_tables":
+                namespace = arguments.get("namespace") or state.get("namespace")
+                if namespace:
+                    arguments["namespace"] = namespace
 
             if function_name not in TOOLS:
                 result = {"status": "error", "error": f"Unknown tool: {function_name}"}

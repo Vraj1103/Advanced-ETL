@@ -114,8 +114,8 @@ class StandaloneECEProcessor:
             }
             print(f"[EMBED] Completed in {embed_time:.2f}s - {upsert_result['success_count']}/{upsert_result['total_chunks']} chunks stored")
             
-            # Stage 4: Extract & Store Structured Data (DUAL STORAGE)
-            print(f"[STRUCTURED] Extracting facts and tables for MongoDB storage")
+            # Stage 4: Extract & Store Structured Data (DUAL STORAGE - PostgreSQL)
+            print(f"[STRUCTURED] Extracting facts and tables for PostgreSQL storage")
             structured_start = time.time()
             
             self.structured_storage = StructuredStorageService()
@@ -156,8 +156,8 @@ class StandaloneECEProcessor:
                 "tables_extracted": result["stages"]["extract"]["tables"],
                 "chunks_created": result["stages"]["chunk"]["chunk_count"],
                 "chunks_stored_vector_db": result["stages"]["embed"]["success_count"],
-                "facts_stored_mongodb": result["stages"]["structured"]["facts_stored"],
-                "tables_stored_mongodb": result["stages"]["structured"]["tables_stored"]
+                "facts_stored_postgres": result["stages"]["structured"]["facts_stored"],
+                "tables_stored_postgres": result["stages"]["structured"]["tables_stored"]
             }
             
             if result["stages"]["embed"]["failed_count"] > 0:

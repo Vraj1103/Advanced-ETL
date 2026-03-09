@@ -47,6 +47,7 @@ uploads/
 output/
 logs/
 *.log
+export_evaluation/
 
 # Docker
 .dockerignore
@@ -56,6 +57,8 @@ logs/
 *.md
 !README.md
 !QUICKSTART.md
+!ARCHITECTURE_AND_LIMITATIONS.md
+!execution_logs/README.md
 
 # OS
 .DS_Store

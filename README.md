@@ -113,7 +113,21 @@ standalone_ece/
 
 ---
 
-## 5) API endpoints
+## 5) Storage format
+
+Data is stored in two stores. Shapes below are what the pipeline writes and what the API returns.
+
+**Vector DB (Azure Cognitive Search)**  
+Chunks are indexed with: `id`, `title`, `content`, `contentVector`, `file_id`, `file_name`, `namespace`, `page_number` (string form of a list, e.g. `"[1]"`), `bounding_box` (JSON string), `page_info`.  
+Search results (`POST /search`, `semantic_search`): `page_number` is returned as a **list of integers**; `bounding_box` as a **dict**. Each hit includes `content`, `file_name`, `page_number`, `bounding_box`, `score`.
+
+**PostgreSQL – Facts table** (`facts`): `id`, `file_id`, `file_name`, `namespace`, `entity_type`, `value` (varchar 500, stored as string), `page`, `source_quote`, `confidence`, `created_at`. `lookup_fact` filters by `entity_type`, `namespace`, `page`, `file_id`.
+
+**PostgreSQL – Tables table** (`tables`): `id`, `table_id`, `file_id`, `file_name`, `namespace`, `headers` (JSONB), `data` (JSONB), `metadata` (JSONB), `created_at`. `metadata` includes `table_index`, `has_headers`, and `page_number` (for citations). `get_source_citation` uses `metadata.page_number` for table citations.
+
+---
+
+## 6) API endpoints
 
 ### `GET /health`
 Service health check.
@@ -155,7 +169,7 @@ Response (debug mode includes trace):
 
 ---
 
-## 6) Environment variables
+## 7) Environment variables
 
 Copy `.env.example` to `.env` and set required values.
 
@@ -179,7 +193,9 @@ Copy `.env.example` to `.env` and set required values.
 
 ---
 
-## 7) Local run
+## 8) Local run
+
+Use **Python 3.11 or 3.12** (3.14 is not supported by tiktoken/pydantic-core). Create the venv with a supported interpreter, e.g. `python3.12 -m venv venv`, then:
 
 ```bash
 cd standalone_ece
@@ -191,7 +207,7 @@ Server default: `http://localhost:8001`
 
 ---
 
-## 8) Docker deployment
+## 9) Docker deployment
 
 Build:
 ```bash
@@ -205,7 +221,7 @@ docker run --env-file .env -p 8001:8001 standalone-ece
 
 ---
 
-## 9) Useful test calls
+## 10) Useful test calls
 
 ### Upload
 ```bash
@@ -227,9 +243,12 @@ curl -X POST "http://localhost:8001/agent/query" \
 
 ---
 
-## 10) Operational notes
+## 11) Operational notes
 
 - If `discover_tables` returns 0, structured tables are not yet stored for that namespace.
 - If `lookup_fact` returns 0, fact extraction patterns may not match document layout.
 - Use `debug: true` on agent endpoint to inspect routing/tool behavior.
 - Service cleanup is handled on shutdown for vector, postgres, and LLM clients.
+
+- Run `python export_for_evaluation.py` to export all chunks and PostgreSQL tables/facts to `export_evaluation/` for storage and retrieval evaluation.
+- Run `python scripts/run_test_queries_and_save_traces.py` after uploading the PDF to generate execution logs in `execution_logs/` (see that folder's README). For architecture justification and limitations see ARCHITECTURE_AND_LIMITATIONS.md.

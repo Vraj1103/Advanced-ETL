@@ -111,6 +111,7 @@ async def lookup_fact(
     entity_type: Optional[str] = None,
     page_number: Optional[int] = None,
     file_id: Optional[str] = None,
+    namespace: Optional[str] = None,
     limit: int = 50
 ) -> Dict[str, Any]:
     """
@@ -123,6 +124,7 @@ async def lookup_fact(
         entity_type: Filter by fact type (e.g., "JOB_COUNT", "PERCENTAGE", "GROWTH_RATE")
         page_number: Filter by page number
         file_id: Filter by source file ID
+        namespace: Filter by namespace (recommended; injected by agent if not provided)
         limit: Maximum number of facts to return (default: 50)
         
     Returns:
@@ -147,10 +149,11 @@ async def lookup_fact(
             filters['page'] = page_number
         if file_id is not None:
             filters['file_id'] = file_id
-        
+
         facts = await storage_service.get_fact(
             entity_type=entity_type,
             filters=filters if filters else None,
+            namespace=namespace,
             limit=limit
         )
         
@@ -172,7 +175,8 @@ async def lookup_fact(
             "filters": {
                 "entity_type": entity_type,
                 "page_number": page_number,
-                "file_id": file_id
+                "file_id": file_id,
+                "namespace": namespace
             }
         }
     except Exception as e:
@@ -302,16 +306,21 @@ async def discover_tables(
             namespace=namespace
         )
         
-        # Format table metadata
+        # Format table metadata (reflects stored schema: metadata has page_number, row_count from len(data))
         formatted_tables = []
         for table in tables or []:
             headers = table.get("headers", [])
-            
+            metadata = table.get("metadata") or {}
+            row_count = metadata.get("row_count")  # from table extractor when present
+            if row_count is None:
+                row_count = len(table.get("data", []))
+
             formatted_tables.append({
                 "table_id": table.get("table_id"),
                 "column_count": len(headers),
                 "columns": [h.get("name") for h in headers] if headers else [],
-                "row_count": table.get("metadata", {}).get("row_count", 0),
+                "row_count": row_count,
+                "page_number": metadata.get("page_number"),
                 "data_types": [h.get("type") for h in headers] if headers else [],
                 "created_at": table.get("created_at")
             })
@@ -873,6 +882,10 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
                         "file_id": {
                             "type": "string",
                             "description": "Filter by source file ID"
+                        },
+                        "namespace": {
+                            "type": "string",
+                            "description": "Filter by namespace (e.g., document name) to avoid cross-document results"
                         },
                         "limit": {
                             "type": "integer",
