@@ -2,9 +2,12 @@
   "test_id": "test1_verification",
   "description": "Verification challenge: exact number + page and citation",
   "query": "What is the total number of jobs reported, and where exactly is this stated?",
+  "final_answer": "The total number of jobs reported in the cyber security sector in Ireland is **7,351**. This figure is stated in multiple places within the document, including:\n\n1. **Table 4.1** titled \"Ireland Cyber Security Sector GVA Estimate (2021) (and per capita)\" on **page 19**.\n2. The **Executive Summary** on **page 4**, which also mentions that the sector employs 7,351 cyber security professionals.\n\nThese references confirm the total employment figure in the sector.",
+  "status": "success",
+  "steps": 1,
+  "run_at": "2026-03-09T18:29:31.535237Z",
   "namespace": "new_two",
-  "run_at": "2026-03-09T18:22:36.826435Z",
-  "response": {
+  "logs": {
     "status": "success",
     "query": "What is the total number of jobs reported, and where exactly is this stated?",
     "namespace": "new_two",
@@ -14,7 +17,7 @@
       "events": [
         {
           "type": "tool_call",
-          "tool_call_id": "call_OhIEQ6pNCWn3uEgeA1OXquNy",
+          "tool_call_id": "call_9WeYbAj4gzADQ7UcUJr5MeKi",
           "tool_name": "semantic_search",
           "arguments": {
             "query": "total number of jobs"
@@ -22,7 +25,7 @@
         },
         {
           "type": "tool_result",
-          "tool_call_id": "call_OhIEQ6pNCWn3uEgeA1OXquNy",
+          "tool_call_id": "call_9WeYbAj4gzADQ7UcUJr5MeKi",
           "tool_name": "semantic_search",
           "result": {
             "status": "success",
@@ -5991,7 +5994,7 @@
       ],
       "tool_calls": [
         {
-          "tool_call_id": "call_OhIEQ6pNCWn3uEgeA1OXquNy",
+          "tool_call_id": "call_9WeYbAj4gzADQ7UcUJr5MeKi",
           "tool_name": "semantic_search",
           "arguments": {
             "query": "total number of jobs"
@@ -6000,7 +6003,7 @@
       ],
       "tool_results": [
         {
-          "tool_call_id": "call_OhIEQ6pNCWn3uEgeA1OXquNy",
+          "tool_call_id": "call_9WeYbAj4gzADQ7UcUJr5MeKi",
           "tool_name": "semantic_search",
           "result": {
             "status": "success",
