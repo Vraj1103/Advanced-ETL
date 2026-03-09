@@ -3,18 +3,18 @@
   "description": "Forecasting: baseline + target, CAGR via tool",
   "query": "Based on our 2022 baseline and the stated 2030 job target, what is the required compound annual growth rate (CAGR) to hit that goal?",
   "namespace": "new_two",
-  "run_at": "2026-03-09T17:41:09.191412Z",
+  "run_at": "2026-03-09T17:57:03.451217Z",
   "response": {
     "status": "success",
     "query": "Based on our 2022 baseline and the stated 2030 job target, what is the required compound annual growth rate (CAGR) to hit that goal?",
     "namespace": "new_two",
     "steps": 2,
-    "answer": "To achieve the target of 17,333 jobs by 2030, starting from a baseline of 8,086 jobs in 2022, the required compound annual growth rate (CAGR) is approximately **10.00%** over the 8-year period.\n\nThis calculation is based on the following figures:\n- **2022 Baseline Jobs**: 8,086 (source: Table 7.1, page 27)\n- **2030 Target Jobs**: 17,333 (source: Table 7.1, page 27)\n\nThus, to meet the job target, the cyber security sector in Ireland needs to grow at a CAGR of 10.00%.",
+    "answer": "To achieve the target of 17,333 jobs by 2030, starting from a baseline of 8,086 jobs in 2022, the required compound annual growth rate (CAGR) is approximately **10.00%**. \n\nThis calculation is based on the following values:\n- **2022 Baseline Jobs**: 8,086 (source: Table 7.1, page 27)\n- **2030 Target Jobs**: 17,333 (source: Table 7.1, page 27)\n\nThe CAGR was calculated using the formula for compound growth over 8 years, resulting in a growth rate of 10.00%.",
     "trace": {
       "events": [
         {
           "type": "tool_call",
-          "tool_call_id": "call_IDFjGTEvBBu7Mgweosiimpyi",
+          "tool_call_id": "call_0bLSgx04OXjKxODdJDPBuUYc",
           "tool_name": "semantic_search",
           "arguments": {
             "query": "2022 baseline jobs"
@@ -22,7 +22,7 @@
         },
         {
           "type": "tool_call",
-          "tool_call_id": "call_GWukBcm1x4hwahUXWUBM0Gpn",
+          "tool_call_id": "call_xCvOTvzACkEUvS3914JMKYEM",
           "tool_name": "semantic_search",
           "arguments": {
             "query": "2030 target jobs"
@@ -30,7 +30,7 @@
         },
         {
           "type": "tool_result",
-          "tool_call_id": "call_IDFjGTEvBBu7Mgweosiimpyi",
+          "tool_call_id": "call_0bLSgx04OXjKxODdJDPBuUYc",
           "tool_name": "semantic_search",
           "result": {
             "status": "success",
@@ -4023,7 +4023,7 @@
         },
         {
           "type": "tool_result",
-          "tool_call_id": "call_GWukBcm1x4hwahUXWUBM0Gpn",
+          "tool_call_id": "call_xCvOTvzACkEUvS3914JMKYEM",
           "tool_name": "semantic_search",
           "result": {
             "status": "success",
@@ -13416,7 +13416,7 @@
         },
         {
           "type": "tool_call",
-          "tool_call_id": "call_xpWnypE6BogIBSG5xyBQU2ek",
+          "tool_call_id": "call_l4vU8ZasfhveWZD62UEO4SpN",
           "tool_name": "calculate_metrics",
           "arguments": {
             "metric_type": "cagr",
@@ -13427,7 +13427,7 @@
         },
         {
           "type": "tool_result",
-          "tool_call_id": "call_xpWnypE6BogIBSG5xyBQU2ek",
+          "tool_call_id": "call_l4vU8ZasfhveWZD62UEO4SpN",
           "tool_name": "calculate_metrics",
           "result": {
             "status": "success",
@@ -13439,26 +13439,26 @@
         },
         {
           "type": "assistant_message",
-          "content": "To achieve the target of 17,333 jobs by 2030, starting from a baseline of 8,086 jobs in 2022, the required compound annual growth rate (CAGR) is approximately **10.00%** over the 8-year period.\n\nThis calculation is based on the following figures:\n- **2022 Baseline Jobs**: 8,086 (source: Table 7.1, page 27)\n- **2030 Target Jobs**: 17,333 (source: Table 7.1, page 27)\n\nThus, to meet the job target, the cyber security sector in Ireland needs to grow at a CAGR of 10.00%."
+          "content": "To achieve the target of 17,333 jobs by 2030, starting from a baseline of 8,086 jobs in 2022, the required compound annual growth rate (CAGR) is approximately **10.00%**. \n\nThis calculation is based on the following values:\n- **2022 Baseline Jobs**: 8,086 (source: Table 7.1, page 27)\n- **2030 Target Jobs**: 17,333 (source: Table 7.1, page 27)\n\nThe CAGR was calculated using the formula for compound growth over 8 years, resulting in a growth rate of 10.00%."
         }
       ],
       "tool_calls": [
         {
-          "tool_call_id": "call_IDFjGTEvBBu7Mgweosiimpyi",
+          "tool_call_id": "call_0bLSgx04OXjKxODdJDPBuUYc",
           "tool_name": "semantic_search",
           "arguments": {
             "query": "2022 baseline jobs"
           }
         },
         {
-          "tool_call_id": "call_GWukBcm1x4hwahUXWUBM0Gpn",
+          "tool_call_id": "call_xCvOTvzACkEUvS3914JMKYEM",
           "tool_name": "semantic_search",
           "arguments": {
             "query": "2030 target jobs"
           }
         },
         {
-          "tool_call_id": "call_xpWnypE6BogIBSG5xyBQU2ek",
+          "tool_call_id": "call_l4vU8ZasfhveWZD62UEO4SpN",
           "tool_name": "calculate_metrics",
           "arguments": {
             "metric_type": "cagr",
@@ -13470,7 +13470,7 @@
       ],
       "tool_results": [
         {
-          "tool_call_id": "call_IDFjGTEvBBu7Mgweosiimpyi",
+          "tool_call_id": "call_0bLSgx04OXjKxODdJDPBuUYc",
           "tool_name": "semantic_search",
           "result": {
             "status": "success",
@@ -17462,7 +17462,7 @@
           }
         },
         {
-          "tool_call_id": "call_GWukBcm1x4hwahUXWUBM0Gpn",
+          "tool_call_id": "call_xCvOTvzACkEUvS3914JMKYEM",
           "tool_name": "semantic_search",
           "result": {
             "status": "success",
@@ -26854,7 +26854,7 @@
           }
         },
         {
-          "tool_call_id": "call_xpWnypE6BogIBSG5xyBQU2ek",
+          "tool_call_id": "call_l4vU8ZasfhveWZD62UEO4SpN",
           "tool_name": "calculate_metrics",
           "result": {
             "status": "success",
