@@ -1,5 +1,6 @@
 import uuid
 import asyncio
+import json
 from typing import List, Tuple, Dict
 import backoff
 from azure.search.documents.aio import SearchClient
@@ -319,15 +320,23 @@ class VectorStorageService:
                 # Parse bounding_box JSON string back to dict
                 bounding_box = result.get("bounding_box", "{}")
                 try:
-                    import json
                     bounding_box = json.loads(bounding_box) if bounding_box else {}
                 except (json.JSONDecodeError, TypeError):
                     bounding_box = {}
-                
+                # Parse page_number from string representation (e.g. "[1]" or "[1, 2]") to list of ints
+                page_number_raw = result.get("page_number") or "[]"
+                try:
+                    page_numbers = json.loads(page_number_raw) if isinstance(page_number_raw, str) else page_number_raw
+                    if not isinstance(page_numbers, list):
+                        page_numbers = [page_numbers] if page_numbers is not None else []
+                    page_numbers = [int(p) for p in page_numbers if p is not None]
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    page_numbers = []
+
                 formatted_results.append({
                     "content": result.get("content"),
                     "file_name": result.get("file_name"),
-                    "page_number": result.get("page_number"),
+                    "page_number": page_numbers,
                     "bounding_box": bounding_box,
                     "score": result.get("@search.score")
                 })

@@ -129,6 +129,17 @@ class StructuredStorageService:
                 async with conn.transaction():
                     for fact in facts:
                         fact_id = str(uuid.uuid4())
+                        # Value must be string for VARCHAR(500); avoid scientific notation for integers
+                        raw_value = fact.get('value')
+                        if raw_value is None:
+                            value_str = ''
+                        elif isinstance(raw_value, float) and raw_value == int(raw_value):
+                            value_str = str(int(raw_value))
+                        else:
+                            value_str = str(raw_value)
+                        if len(value_str) > 500:
+                            value_str = value_str[:500]
+
                         await conn.execute('''
                             INSERT INTO facts (
                                 id, file_id, file_name, namespace, entity_type,
@@ -140,7 +151,7 @@ class StructuredStorageService:
                             file_name,
                             namespace,
                             fact.get('entity_type'),
-                            fact.get('value'),
+                            value_str,
                             fact.get('page'),
                             fact.get('source_quote'),
                             fact.get('confidence', 0.0)
@@ -197,7 +208,11 @@ class StructuredStorageService:
                     for table in tables:
                         table_uuid = str(uuid.uuid4())
                         table_id = table.get('table_id', f'table_{table_uuid[:8]}')
-                        
+                        # Include page_number in metadata for citations (get_source_citation)
+                        metadata = dict(table.get('metadata') or {})
+                        if table.get('page') is not None:
+                            metadata['page_number'] = table['page']
+
                         await conn.execute('''
                             INSERT INTO tables (
                                 id, table_id, file_id, file_name, namespace,
@@ -215,7 +230,7 @@ class StructuredStorageService:
                             namespace,
                             json.dumps(table.get('headers', [])),
                             json.dumps(table.get('data', [])),
-                            json.dumps(table.get('metadata', {}))
+                            json.dumps(metadata)
                         )
                         inserted_ids.append(table_uuid)
             
@@ -237,35 +252,41 @@ class StructuredStorageService:
         self, 
         entity_type: Optional[str] = None, 
         filters: Optional[Dict] = None,
+        namespace: Optional[str] = None,
         limit: int = 50
     ) -> List[Dict]:
         """
         Retrieve facts from PostgreSQL with optional filtering
-        
+
         Args:
             entity_type: Type of entity (e.g., 'job_count'). If None, returns all facts.
             filters: Additional filter criteria (e.g., {'page': 10, 'file_id': 'xyz'})
+            namespace: Filter by namespace (recommended to avoid cross-document results)
             limit: Maximum number of facts to return (default: 50)
-            
+
         Returns:
             List of fact dictionaries
         """
         if not self._initialized:
             await self.initialize()
-        
+
         try:
             query = 'SELECT * FROM facts WHERE 1=1'
             params = []
-            
+
             if entity_type:
                 query += f' AND entity_type = ${len(params) + 1}'
                 params.append(entity_type)
-            
+
+            if namespace:
+                query += f' AND namespace = ${len(params) + 1}'
+                params.append(namespace)
+
             if filters:
                 for key, value in filters.items():
                     query += f' AND {key} = ${len(params) + 1}'
                     params.append(value)
-            
+
             query += f' ORDER BY created_at DESC LIMIT ${len(params) + 1}'
             params.append(limit)
             

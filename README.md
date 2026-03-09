@@ -1,10 +1,26 @@
 # Standalone ECE + LangGraph Service
 
-Production-ready standalone service for:
-- PDF ingestion and processing (**Extract → Chunk → Embed → Structured Store**)
-- Semantic search over Azure Cognitive Search
-- Structured retrieval from PostgreSQL
-- LangGraph agentic querying with tool traces
+Production-ready backend that transforms static PDFs into queryable knowledge via an **ETL pipeline** and an **agentic LLM system**. Built for the Cyber Ireland 2022 Report; handles verification, data synthesis, and forecasting with citations and tool traces.
+
+---
+
+## Core deliverables (evaluation)
+
+| Deliverable | Location |
+|-------------|----------|
+| **ETL pipeline** | `ece_processor.py`, `extraction_service.py`, `chunking_service.py`, `table_extractor.py`, `vector_service.py`, `structured_storage_service.py` — extract, chunk, embed, and load tables + chunks |
+| **Agentic backend** | FastAPI app in `app.py`; single **`POST /agent/query`** endpoint for agent orchestration |
+| **Execution logs / traces** | `execution_logs/` — JSON logs with query, final answer, and full trace (tool calls, results) for the evaluation test queries. Generate with `python scripts/run_test_queries_and_save_traces.py` after uploading the PDF. |
+| **Setup & run** | This README (§8–9) and **QUICKSTART.md** |
+| **Architecture justification & limitations** | **ARCHITECTURE_AND_LIMITATIONS.md** — ETL choices, agent framework, toolset; current weaknesses; scaling for production |
+
+### Evaluation scenarios ("moments of truth")
+
+The backend is validated against these three test queries; traces are in `execution_logs/`:
+
+1. **Test 1 – Verification:** *"What is the total number of jobs reported, and where exactly is this stated?"* — Correct number plus exact page and citation.
+2. **Test 2 – Data synthesis:** *"Compare the concentration of 'Pure-Play' cybersecurity firms in the South-West against the National Average."* — Regional tables, comparative metrics, mathematically accurate.
+3. **Test 3 – Forecasting:** *"Based on our 2022 baseline and the stated 2030 job target, what is the required compound annual growth rate (CAGR) to hit that goal?"* — Baseline + target from document; CAGR computed via `calculate_metrics` tool (no LLM math).
 
 ---
 
@@ -75,25 +91,28 @@ flowchart TD
 ## 3) Code structure
 
 ```text
-standalone_ece/
+.
 ├── app.py                       # FastAPI app + endpoints
 ├── langgraph_agent.py           # LangGraph graph + tool-calling loop + trace builder
-├── tools.py                     # 8 async tools used by agent
+├── tools.py                     # Async tools used by agent
 ├── ece_processor.py             # End-to-end ingestion orchestrator
-├── extraction_service.py        # Azure Document Intelligence extraction
-├── chunking_service.py          # Chunking + metadata + bounding boxes
-├── vector_service.py            # Azure Search indexing + semantic retrieval
+├── extraction_service.py       # Azure Document Intelligence extraction
+├── chunking_service.py         # Chunking + metadata + bounding boxes
+├── vector_service.py           # Azure Search indexing + semantic retrieval
 ├── structured_storage_service.py# PostgreSQL storage/query layer
 ├── fact_extractor.py            # Structured fact extraction
-├── table_extractor.py           # Structured table extraction
-├── llm_middleware.py            # OpenAI / Azure OpenAI client selection
-├── config.py                    # Environment config loader + validation
+├── table_extractor.py          # Structured table extraction
+├── llm_middleware.py           # OpenAI / Azure OpenAI client selection
+├── config.py                   # Environment config loader + validation
+├── scripts/
+│   └── run_test_queries_and_save_traces.py  # Generate execution_logs for evaluation
+├── execution_logs/             # Test query traces (query, final_answer, logs)
 ├── requirements.txt
 ├── Dockerfile
-├── .dockerignore
-├── .gitignore
 ├── .env.example
-└── QUICKSTART.md
+├── README.md
+├── QUICKSTART.md
+└── ARCHITECTURE_AND_LIMITATIONS.md
 ```
 
 ---
@@ -103,17 +122,30 @@ standalone_ece/
 `tools.py` exposes these tools to LangGraph:
 
 1. `semantic_search`
-2. `lookup_fact`
-3. `query_table`
-4. `discover_tables`
-5. `get_table_info`
-6. `calculate_metrics`
-7. `get_source_citation`
-8. `compare_data`
+2. `query_table`
+3. `discover_tables`
+4. `get_table_info`
+5. `calculate_metrics`
+6. `get_source_citation`
+7. `compare_data`
 
 ---
 
-## 5) API endpoints
+## 5) Storage format
+
+Data is stored in two stores. Shapes below are what the pipeline writes and what the API returns.
+
+**Vector DB (Azure Cognitive Search)**  
+Chunks are indexed with: `id`, `title`, `content`, `contentVector`, `file_id`, `file_name`, `namespace`, `page_number` (string form of a list, e.g. `"[1]"`), `bounding_box` (JSON string), `page_info`.  
+Search results (`POST /search`, `semantic_search`): `page_number` is returned as a **list of integers**; `bounding_box` as a **dict**. Each hit includes `content`, `file_name`, `page_number`, `bounding_box`, `score`.
+
+**PostgreSQL – Facts table** (`facts`): `id`, `file_id`, `file_name`, `namespace`, `entity_type`, `value`, `page`, `source_quote`, `confidence`, `created_at`. (Not used by agent tools; table kept for optional future use.)
+
+**PostgreSQL – Tables table** (`tables`): `id`, `table_id`, `file_id`, `file_name`, `namespace`, `headers` (JSONB), `data` (JSONB), `metadata` (JSONB), `created_at`. `metadata` includes `table_index`, `has_headers`, and `page_number` (for citations). `get_source_citation` uses `metadata.page_number` for table citations.
+
+---
+
+## 6) API endpoints
 
 ### `GET /health`
 Service health check.
@@ -155,7 +187,7 @@ Response (debug mode includes trace):
 
 ---
 
-## 6) Environment variables
+## 7) Environment variables
 
 Copy `.env.example` to `.env` and set required values.
 
@@ -179,10 +211,11 @@ Copy `.env.example` to `.env` and set required values.
 
 ---
 
-## 7) Local run
+## 8) Local run
+
+Use **Python 3.11 or 3.12**. From the project root:
 
 ```bash
-cd standalone_ece
 pip install -r requirements.txt
 python app.py
 ```
@@ -191,7 +224,7 @@ Server default: `http://localhost:8001`
 
 ---
 
-## 8) Docker deployment
+## 9) Docker deployment
 
 Build:
 ```bash
@@ -205,7 +238,7 @@ docker run --env-file .env -p 8001:8001 standalone-ece
 
 ---
 
-## 9) Useful test calls
+## 10) Useful test calls
 
 ### Upload
 ```bash
@@ -227,9 +260,11 @@ curl -X POST "http://localhost:8001/agent/query" \
 
 ---
 
-## 10) Operational notes
+## 11) Operational notes
 
 - If `discover_tables` returns 0, structured tables are not yet stored for that namespace.
-- If `lookup_fact` returns 0, fact extraction patterns may not match document layout.
 - Use `debug: true` on agent endpoint to inspect routing/tool behavior.
 - Service cleanup is handled on shutdown for vector, postgres, and LLM clients.
+
+- Run `python export_for_evaluation.py` to export all chunks and PostgreSQL tables/facts to `export_evaluation/` for storage and retrieval evaluation.
+- Run `python scripts/run_test_queries_and_save_traces.py` (after uploading the PDF) to generate execution logs in `execution_logs/`. Each log contains `query`, `final_answer`, and `logs` (full trace). For **architecture justification** and **limitations** (including scaling for production), see **ARCHITECTURE_AND_LIMITATIONS.md**.

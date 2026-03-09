@@ -2,8 +2,9 @@
 
 ## 1) Install
 
+From the project root:
+
 ```bash
-cd standalone_ece
 pip install -r requirements.txt
 ```
 

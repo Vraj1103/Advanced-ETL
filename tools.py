@@ -104,88 +104,7 @@ async def semantic_search(
 
 
 # ============================================================================
-# TOOL 2: LOOKUP_FACT
-# ============================================================================
-
-async def lookup_fact(
-    entity_type: Optional[str] = None,
-    page_number: Optional[int] = None,
-    file_id: Optional[str] = None,
-    limit: int = 50
-) -> Dict[str, Any]:
-    """
-    Look up pre-extracted facts from the structured storage.
-    
-    This tool retrieves numeric facts (job counts, percentages, growth rates)
-    that have been extracted from the source documents with confidence scores.
-    
-    Args:
-        entity_type: Filter by fact type (e.g., "JOB_COUNT", "PERCENTAGE", "GROWTH_RATE")
-        page_number: Filter by page number
-        file_id: Filter by source file ID
-        limit: Maximum number of facts to return (default: 50)
-        
-    Returns:
-        Dictionary with:
-        - status: "success" or "error"
-        - facts: List of fact objects with value, entity_type, page, source_quote, confidence
-        - fact_count: Number of facts returned
-        - error: Error message if status is "error"
-        
-    Example:
-        >>> facts = await lookup_fact(entity_type="JOB_COUNT", page_number=10)
-        >>> for fact in facts['facts']:
-        ...     print(f"{fact['value']} ({fact['confidence']}): {fact['source_quote']}")
-    """
-    if storage_service is None:
-        await initialize_services()
-    
-    try:
-        # Build filter dict for get_fact method
-        filters = {}
-        if page_number is not None:
-            filters['page'] = page_number
-        if file_id is not None:
-            filters['file_id'] = file_id
-        
-        facts = await storage_service.get_fact(
-            entity_type=entity_type,
-            filters=filters if filters else None,
-            limit=limit
-        )
-        
-        # Format results
-        formatted_facts = []
-        for fact in facts:
-            formatted_facts.append({
-                "value": fact.get("value"),
-                "entity_type": fact.get("entity_type"),
-                "page": fact.get("page"),
-                "source_quote": fact.get("source_quote"),
-                "confidence": fact.get("confidence", 0.0)
-            })
-        
-        return {
-            "status": "success",
-            "facts": formatted_facts,
-            "fact_count": len(formatted_facts),
-            "filters": {
-                "entity_type": entity_type,
-                "page_number": page_number,
-                "file_id": file_id
-            }
-        }
-    except Exception as e:
-        return {
-            "status": "error", 
-            "error": str(e),
-            "facts": [],
-            "fact_count": 0
-        }
-
-
-# ============================================================================
-# TOOL 3: QUERY_TABLE
+# TOOL 2: QUERY_TABLE
 # ============================================================================
 
 async def query_table(
@@ -265,7 +184,7 @@ async def query_table(
 
 
 # ============================================================================
-# TOOL 4: DISCOVER_TABLES
+# TOOL 3: DISCOVER_TABLES
 # ============================================================================
 
 async def discover_tables(
@@ -302,16 +221,21 @@ async def discover_tables(
             namespace=namespace
         )
         
-        # Format table metadata
+        # Format table metadata (reflects stored schema: metadata has page_number, row_count from len(data))
         formatted_tables = []
         for table in tables or []:
             headers = table.get("headers", [])
-            
+            metadata = table.get("metadata") or {}
+            row_count = metadata.get("row_count")  # from table extractor when present
+            if row_count is None:
+                row_count = len(table.get("data", []))
+
             formatted_tables.append({
                 "table_id": table.get("table_id"),
                 "column_count": len(headers),
                 "columns": [h.get("name") for h in headers] if headers else [],
-                "row_count": table.get("metadata", {}).get("row_count", 0),
+                "row_count": row_count,
+                "page_number": metadata.get("page_number"),
                 "data_types": [h.get("type") for h in headers] if headers else [],
                 "created_at": table.get("created_at")
             })
@@ -326,13 +250,17 @@ async def discover_tables(
                 if any(kw in table_text for kw in keywords_lower):
                     filtered_tables.append(table)
             formatted_tables = filtered_tables
+            keyword_note = "Keywords matched table_id and column names only (not row values). For regional or segment comparison, if the table you need is missing, call discover_tables again without keywords or with terms like 'region', 'offices', 'dedicated'."
+        else:
+            keyword_note = None
         
         return {
             "status": "success",
             "tables": formatted_tables,
             "table_count": len(formatted_tables),
             "namespace": namespace,
-            "keywords_filter": keywords
+            "keywords_filter": keywords,
+            "note": keyword_note
         }
     except Exception as e:
         return {
@@ -344,7 +272,7 @@ async def discover_tables(
 
 
 # ============================================================================
-# TOOL 5: GET_TABLE_INFO (Convenience Tool)
+# TOOL 4: GET_TABLE_INFO (Convenience Tool)
 # ============================================================================
 
 async def get_table_info(table_id: str) -> Dict[str, Any]:
@@ -408,12 +336,12 @@ async def get_table_info(table_id: str) -> Dict[str, Any]:
 
 
 # ============================================================================
-# TOOL 6: CALCULATE_METRICS
+# TOOL 5: CALCULATE_METRICS
 # ============================================================================
 
 async def calculate_metrics(
-    data: List[Dict],
     metric_type: str,
+    data: Optional[List[Dict]] = None,
     column: Optional[str] = None,
     start_value: Optional[float] = None,
     end_value: Optional[float] = None,
@@ -421,18 +349,20 @@ async def calculate_metrics(
 ) -> Dict[str, Any]:
     """
     Calculate metrics on data (sum, count, avg, CAGR, growth rate).
-    
+
     This tool performs aggregations and compound annual growth rate calculations
     for forecasting and trend analysis scenarios.
-    
+
+    For CAGR: pass metric_type="cagr", start_value, end_value, and years. data can be omitted.
+
     Args:
-        data: List of row dictionaries to calculate on
         metric_type: Type of metric - "count", "sum", "avg", "min", "max", "cagr"
-        column: Column name to calculate on (required for sum/avg/min/max/cagr)
+        data: List of row dictionaries to calculate on (optional for CAGR)
+        column: Column name to calculate on (required for sum/avg/min/max)
         start_value: Starting value for CAGR calculation
         end_value: Ending value for CAGR calculation
-        years: Number of years for CAGR calculation (e.g., 5 for 5-year CAGR)
-        
+        years: Number of years for CAGR calculation (e.g., 8 for 2022 to 2030)
+
     Returns:
         Dictionary with:
         - status: "success" or "error"
@@ -440,20 +370,19 @@ async def calculate_metrics(
         - result: The calculated value
         - data_points: Number of data points used
         - error: Error message if status is "error"
-        
+
     Example:
-        >>> # Calculate 5-year CAGR
+        >>> # Calculate CAGR from 2022 to 2030 (e.g. jobs 7351 -> 17333)
         >>> result = await calculate_metrics(
-        ...     data=salary_data,
         ...     metric_type="cagr",
-        ...     column="average_salary",
-        ...     start_value=50000,
-        ...     end_value=75000,
-        ...     years=5
+        ...     start_value=7351,
+        ...     end_value=17333,
+        ...     years=8
         ... )
         >>> print(f"CAGR: {result['result']:.2%}")
     """
-    if not data:
+    data = data if data is not None else []
+    if not data and metric_type != "cagr":
         return {
             "status": "error",
             "error": "No data provided",
@@ -510,7 +439,7 @@ async def calculate_metrics(
             "status": "success",
             "metric_type": metric_type,
             "result": result,
-            "data_points": len(data),
+            "data_points": len(data) if data else 0,
             "column": column if column else None
         }
     
@@ -524,7 +453,7 @@ async def calculate_metrics(
 
 
 # ============================================================================
-# TOOL 7: GET_SOURCE_CITATION
+# TOOL 6: GET_SOURCE_CITATION
 # ============================================================================
 
 async def get_source_citation(
@@ -624,7 +553,7 @@ async def get_source_citation(
 
 
 # ============================================================================
-# TOOL 8: COMPARE_DATA
+# TOOL 7: COMPARE_DATA
 # ============================================================================
 
 async def compare_data(
@@ -806,7 +735,6 @@ async def compare_data(
 
 TOOLS = {
     "semantic_search": semantic_search,
-    "lookup_fact": lookup_fact,
     "query_table": query_table,
     "discover_tables": discover_tables,
     "get_table_info": get_table_info,
@@ -828,7 +756,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "semantic_search",
-                "description": "Search for relevant content chunks using semantic similarity. Find content by meaning, not keywords.",
+                "description": "Search document chunks by meaning. Use to find where a number or concept is stated, narrative context, and tables with baseline/target or growth figures. Then use query_table or calculate_metrics as needed.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -857,37 +785,8 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
         {
             "type": "function",
             "function": {
-                "name": "lookup_fact",
-                "description": "Look up pre-extracted numeric facts with confidence scores. Find job numbers, percentages, growth rates.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "entity_type": {
-                            "type": "string",
-                            "description": "Filter by fact type (e.g., JOB_COUNT, PERCENTAGE, GROWTH_RATE)"
-                        },
-                        "page_number": {
-                            "type": "integer",
-                            "description": "Filter by specific page number"
-                        },
-                        "file_id": {
-                            "type": "string",
-                            "description": "Filter by source file ID"
-                        },
-                        "limit": {
-                            "type": "integer",
-                            "description": "Maximum number of facts to return (default: 50)",
-                            "default": 50
-                        }
-                    }
-                }
-            }
-        },
-        {
-            "type": "function",
-            "function": {
                 "name": "query_table",
-                "description": "Query a specific table with optional column filters. Execute SQL-like queries on structured data.",
+                "description": "Get rows from a table by table_id (from discover_tables). Use for regional breakdowns, employment figures, growth data. Optional column_filters and limit. When comparing region vs national, if both rows came from this call, cite this table_id and page for both in your answer.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -913,7 +812,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "discover_tables",
-                "description": "Discover available tables by namespace or keywords. Find what data tables exist.",
+                "description": "List tables in the document. Returns table_id, columns, row_count, page_number. Keywords (if provided) are matched only against table_id and column names—not row values. For regional or segment comparison: omit keywords or use terms that appear in column headers (e.g. region, offices, dedicated). For 'concentration' of a category (e.g. Pure-Play): pick the table that has REGION and both the category column (e.g. dedicated offices) and total column (e.g. total offices); then query_table and compute share = category/total for region and national rows. Then call query_table with that table_id.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -951,38 +850,38 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "calculate_metrics",
-                "description": "Calculate metrics on data: count, sum, average, min, max, or CAGR. Used for trend analysis and forecasting.",
+                "description": "Calculate metrics: count, sum, avg, min, max, or CAGR. For CAGR use metric_type='cagr' with start_value, end_value, and years only (data is not required for CAGR).",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "data": {
-                            "type": "array",
-                            "items": {"type": "object"},
-                            "description": "List of row dictionaries to calculate on"
-                        },
                         "metric_type": {
                             "type": "string",
                             "enum": ["count", "sum", "avg", "min", "max", "cagr"],
                             "description": "Type of metric to calculate"
                         },
+                        "data": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "List of row dictionaries (optional for CAGR)"
+                        },
                         "column": {
                             "type": "string",
-                            "description": "Column name to calculate on (required for sum/avg/min/max/cagr)"
+                            "description": "Column name for sum/avg/min/max"
                         },
                         "start_value": {
                             "type": "number",
-                            "description": "Starting value for CAGR calculation"
+                            "description": "Starting value for CAGR (e.g. 2022 baseline jobs)"
                         },
                         "end_value": {
                             "type": "number",
-                            "description": "Ending value for CAGR calculation"
+                            "description": "Ending value for CAGR (e.g. 2030 target jobs)"
                         },
                         "years": {
                             "type": "integer",
-                            "description": "Number of years for CAGR calculation"
+                            "description": "Number of years for CAGR (e.g. 8 for 2022 to 2030)"
                         }
                     },
-                    "required": ["data", "metric_type"]
+                    "required": ["metric_type"]
                 }
             }
         },
@@ -1018,7 +917,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "compare_data",
-                "description": "Compare two datasets: calculate differences, ratios, percentage changes, or correlations. Supports regional/temporal comparisons.",
+                "description": "Compare two datasets (differences, ratios, percentage change). You must pass dataset_1 and dataset_2 as arrays of rows—e.g. from query_table. Get table data first with query_table, then call compare_data with those rows. Required: dataset_1, dataset_2, comparison_type.",
                 "parameters": {
                     "type": "object",
                     "properties": {
