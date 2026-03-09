@@ -786,7 +786,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "query_table",
-                "description": "Get rows from a table by table_id (from discover_tables). Use for regional breakdowns, employment figures, growth data. Optional column_filters and limit.",
+                "description": "Get rows from a table by table_id (from discover_tables). Use for regional breakdowns, employment figures, growth data. Optional column_filters and limit. When comparing region vs national, if both rows came from this call, cite this table_id and page for both in your answer.",
                 "parameters": {
                     "type": "object",
                     "properties": {
