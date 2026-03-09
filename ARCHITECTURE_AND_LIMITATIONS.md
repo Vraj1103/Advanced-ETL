@@ -1,5 +1,9 @@
 # Architecture justification
 
+This document explains the technical choices behind the ETL pipeline, agent framework, and toolset, and outlines current limitations and how to scale for production (as required by the evaluation deliverables).
+
+---
+
 **ETL**
 - **Azure Document Intelligence (Form Recognizer)** is used for extraction because it provides layout-aware parsing (paragraphs, tables, bounding regions) and reliable table structure (cells, headers) from PDFs. This avoids brittle regex-only or image-only pipelines and gives us page numbers and coordinates for citations.
 - **Chunking** combines token-based text chunking with dedicated table chunks (tables kept intact and converted to HTML for semantic search). Metadata (page_number, bounding_box, file_id) is preserved so the agent can cite sources.
