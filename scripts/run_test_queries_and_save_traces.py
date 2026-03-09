@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
-Run the three evaluation test queries against the agent API and save full response
-(including trace) to execution_logs/ for submission/evaluation.
+Run the evaluation test queries against the agent API and save full response
+to execution_logs/. Each log file is structured for readability:
+
+  1. query         — the question asked
+  2. final_answer  — the agent's answer
+  3. logs          — full trace (events, tool_calls, etc.) below
 
 Requires the API server to be running and the Cyber Ireland 2022 PDF to be uploaded
 with the given namespace (default: cyber-ireland-2022).
@@ -108,13 +112,18 @@ def main():
                 spec["query"],
                 max_steps=args.max_steps,
             )
+            # Readable order: question, final answer, then logs below
+            resp_data = response if isinstance(response, dict) else {}
             export = {
                 "test_id": spec["id"],
                 "description": spec["description"],
                 "query": spec["query"],
-                "namespace": args.namespace,
+                "final_answer": resp_data.get("answer", ""),
+                "status": resp_data.get("status", ""),
+                "steps": resp_data.get("steps", 0),
                 "run_at": datetime.utcnow().isoformat() + "Z",
-                "response": response,
+                "namespace": args.namespace,
+                "logs": resp_data,
             }
             with open(out_file, "w", encoding="utf-8") as f:
                 json.dump(export, f, indent=2, ensure_ascii=False)
