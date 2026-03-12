@@ -274,8 +274,12 @@ class VectorStorageService:
         top_k: int = 10
     ) -> List[Dict]:
         """
-        Search for relevant chunks
-        
+        Search for relevant chunks using hybrid search (BM25 keyword + vector).
+
+        Azure Cognitive Search merges both result sets via Reciprocal Rank Fusion
+        (RRF), which improves retrieval for exact terms (acronyms, numbers, named
+        entities) that pure vector similarity can miss.
+
         Args:
             query: Search query
             namespace: Optional namespace filter
@@ -301,9 +305,10 @@ class VectorStorageService:
             
             filter_str = " and ".join(filters) if filters else None
             
-            # Perform vector search
+            # Hybrid search: BM25 keyword (search_text) + vector (vector_queries).
+            # Azure RRF merges the two ranked lists automatically.
             results = await self.search_client.search(
-                search_text=None,
+                search_text=query,
                 vector_queries=[{
                     "kind": "vector",
                     "vector": query_embedding,
