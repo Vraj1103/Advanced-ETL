@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, TypedDict
 
 from langgraph.graph import END, StateGraph
 
+import config
 from llm_middleware import LLMMiddleware
 from tools import TOOLS, close_services, get_tool_definitions, initialize_services
 
@@ -51,6 +52,8 @@ class AgentState(TypedDict, total=False):
     namespace: Optional[str]
     step_count: int
     max_steps: int
+    has_tool_results: bool  # True once at least one tool round has completed
+    verified: bool          # True once the verify node has run
 
 
 class LangGraphDualStorageAgent:
@@ -58,7 +61,7 @@ class LangGraphDualStorageAgent:
 
     def __init__(self, model: Optional[str] = None, default_namespace: Optional[str] = None):
         self.default_namespace = default_namespace
-        self.model = model or os.getenv("AGENT_CHAT_MODEL", "gpt-4o-mini")
+        self.model = model or config.AGENT_CHAT_MODEL
         self.llm = LLMMiddleware()
         self.client = self.llm.initialize_client()
         self.graph = self._build_graph()
@@ -67,23 +70,37 @@ class LangGraphDualStorageAgent:
         graph = StateGraph(AgentState)
         graph.add_node("llm", self._llm_node)
         graph.add_node("tools", self._tool_node)
+        graph.add_node("verify", self._verify_node)
 
         graph.set_entry_point("llm")
         graph.add_conditional_edges(
             "llm",
             self._route_after_llm,
-            {"tools": "tools", "end": END},
+            {"tools": "tools", "verify": "verify", "end": END},
         )
         graph.add_edge("tools", "llm")
+        # After verify, one final llm_node call synthesises the grounded answer.
+        graph.add_edge("verify", "llm")
         return graph.compile()
 
     def _route_after_llm(self, state: AgentState) -> str:
         pending = state.get("pending_tool_calls", [])
         max_steps = state.get("max_steps", 8)
         step_count = state.get("step_count", 0)
+        verified = state.get("verified", False)
+        has_tool_results = state.get("has_tool_results", False)
 
-        if pending and step_count < max_steps:
+        # Keep executing tool calls while there are pending ones, we haven't
+        # verified yet, and we're within the step budget.
+        if pending and step_count < max_steps and not verified:
             return "tools"
+
+        # All tool rounds are done and evidence hasn't been verified yet —
+        # run the verify phase before synthesising the final answer.
+        if has_tool_results and not verified:
+            return "verify"
+
+        # Either no tools were called (direct answer) or verification is done.
         return "end"
 
     async def _llm_node(self, state: AgentState) -> AgentState:
@@ -170,6 +187,67 @@ class LangGraphDualStorageAgent:
             "messages": state["messages"] + tool_messages,
             "pending_tool_calls": [],
             "step_count": state.get("step_count", 0) + 1,
+            "has_tool_results": True,
+        }
+
+    async def _verify_node(self, state: AgentState) -> AgentState:
+        """
+        Verification phase (retrieve → verify → answer).
+
+        Makes a single focused LLM call that reviews all tool results against the
+        original question, then injects a concise verification note as a system
+        message.  The subsequent llm_node call synthesises the final answer with
+        that grounding assessment already in context.
+        """
+        user_question = next(
+            (m["content"] for m in state["messages"] if m["role"] == "user"), ""
+        )
+
+        # Collect every tool result, capped to avoid bloating the context window.
+        evidence_parts: List[str] = []
+        for m in state["messages"]:
+            if m["role"] == "tool":
+                try:
+                    parsed = json.loads(m.get("content", "{}"))
+                except (json.JSONDecodeError, TypeError):
+                    parsed = {"_raw": m.get("content", "")}
+                snippet = json.dumps(parsed, default=str)[:800]
+                evidence_parts.append(f"[{m.get('name', 'tool')}]\n{snippet}")
+
+        evidence_block = "\n\n".join(evidence_parts) if evidence_parts else "No tool results available."
+
+        verify_prompt = (
+            f"Question: {user_question}\n\n"
+            f"Retrieved evidence:\n{evidence_block}\n\n"
+            "Assess the evidence in 2–3 sentences:\n"
+            "1. Does it directly answer the question? State the key finding and "
+            "its source (page number or table ID).\n"
+            "2. Are there any contradictions or inconsistencies between results?\n"
+            "3. Is any critical data missing that would affect accuracy?\n"
+            "Be concise and factual."
+        )
+
+        verification_response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": verify_prompt}],
+            temperature=0,
+        )
+
+        verification_note = verification_response.choices[0].message.content or ""
+
+        inject: Dict[str, Any] = {
+            "role": "system",
+            "content": (
+                f"[VERIFICATION ASSESSMENT]\n{verification_note}\n\n"
+                "Based on this assessment, produce the final answer. "
+                "Cite specific pages and sources. Address any gaps noted above."
+            ),
+        }
+
+        return {
+            **state,
+            "messages": state["messages"] + [inject],
+            "verified": True,
         }
 
     async def ainvoke(
@@ -192,6 +270,8 @@ class LangGraphDualStorageAgent:
             "max_steps": max_steps,
             "pending_tool_calls": [],
             "final_answer": "",
+            "has_tool_results": False,
+            "verified": False,
         }
 
         result = await self.graph.ainvoke(initial_state)
@@ -204,6 +284,7 @@ class LangGraphDualStorageAgent:
 
         if debug:
             response["trace"] = self._build_trace(response.get("messages", []))
+            response["verified"] = result.get("verified", False)
 
         return response
 
@@ -246,6 +327,12 @@ class LangGraphDualStorageAgent:
                 }
                 tool_results.append(entry)
                 events.append({"type": "tool_result", **entry})
+
+            elif role == "system" and message.get("content", "").startswith("[VERIFICATION ASSESSMENT]"):
+                events.append({
+                    "type": "verification",
+                    "content": message.get("content"),
+                })
 
             elif role == "assistant" and message.get("content"):
                 events.append({

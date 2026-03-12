@@ -8,8 +8,11 @@ azure-ai-formrecognizer==3.3.2
 azure-search-documents==11.6.0b1
 azure-core==1.30.0
 
-# OpenAI
-openai==2.3.0
+# LLM — vendor-neutral adapter (replaces direct openai SDK dependency).
+# LiteLLM supports OpenAI, Azure OpenAI, Anthropic, Groq, Ollama, and 100+
+# other providers through a single interface.  It installs openai as a
+# transitive dependency, so no separate openai pin is needed.
+litellm
 
 # Text Processing
 tiktoken==0.7.0
